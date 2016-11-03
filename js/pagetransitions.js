@@ -1,4 +1,4 @@
-var PageTransitions = (function() {
+var PageTransitions = (function($) {
 
 	var $main = $( '#pt-main' ),
 		$pages = $main.children( 'div.pt-page' ),
@@ -31,7 +31,9 @@ var PageTransitions = (function() {
             SPACE: 32,
             PAGE_DOWN: 34,
             PAGE_UP: 33
-        };
+        },
+        _loadedPageTriggers = {},
+        _leavedPageTriggers = {};
 
 	function init() {
 
@@ -42,11 +44,11 @@ var PageTransitions = (function() {
 
 		$pages.eq( current ).addClass( 'pt-page-current' );
 
-		$( '#dl-menu' ).dlmenu( {
+		$( '.dl-menu' ).dlmenu( {
 			animationClasses : { in : 'dl-animate-in-2', out : 'dl-animate-out-2' },
 			onLinkClick : function( el, ev ) {
 				ev.preventDefault();
-				nextPage( el.data( 'animation' ) );
+				nextPage( { animation: el.data( 'animation' ), showPage: el.data( 'page' )} );
 			}
 		} );
 
@@ -63,19 +65,19 @@ var PageTransitions = (function() {
             return animcursor;
         };
 
-        $( "body" ).keyup(function(event) {
-            var key = event.which,
-                animation = $( '#dl-menu' ).data().dlmenu.$el.data( 'animation' );
+        // $( "body" ).keyup(function(event) {
+        //     var key = event.which,
+        //         animation = $( '#dl-menu' ).data().dlmenu.$el.data( 'animation' );
 
-            if ( key == keys.RIGHT || key == keys.SPACE || key == keys.ENTER || key == keys.DOWN || key == keys.PAGE_DOWN ) {
-                nextPage( animcursorCheck() );
-                ++animcursor;
-            }
-            if ( key == keys.LEFT || key == keys.BACKSPACE || key == keys.PAGE_UP ) {
-                --animcursor;
-                nextPage( animcursorCheck() );
-            }
-        });
+        //     if ( key == keys.RIGHT || key == keys.SPACE || key == keys.ENTER || key == keys.DOWN || key == keys.PAGE_DOWN ) {
+        //         nextPage( animcursorCheck() );
+        //         ++animcursor;
+        //     }
+        //     if ( key == keys.LEFT || key == keys.BACKSPACE || key == keys.PAGE_UP ) {
+        //         --animcursor;
+        //         nextPage( animcursorCheck() );
+        //     }
+        // });
 
         $iterate.on( 'click', function() {
             nextPage( animcursorCheck() );
@@ -96,7 +98,7 @@ var PageTransitions = (function() {
 		var $currPage = $pages.eq( current );
 
 		if(typeof options.showPage != 'undefined'){
-			if( options.showPage < pagesCount - 1 ) {
+			if( options.showPage <= pagesCount - 1 ) {
 				current = options.showPage;
 			}
 			else {
@@ -408,6 +410,26 @@ var PageTransitions = (function() {
 			onEndAnimation( $currPage, $nextPage );
 		}
 
+		// Custom
+		if(triggers = _leavedPageTriggers[$currPage.attr('id')]) {			
+			for (var i = triggers.length - 1; i >= 0; i--) {
+				var page = $('#' + triggers[i].id);
+				triggers[i].callback(page);
+
+				if(!triggers[i].repeat)
+					triggers.splice(i, 1);
+			}
+		}
+
+		if(triggers = _loadedPageTriggers[$nextPage.attr('id')]) {			
+			for (var i = triggers.length - 1; i >= 0; i--) {
+				var page = $('#' + triggers[i].id);
+				triggers[i].callback(page);
+
+				if(!triggers[i].repeat)
+					triggers.splice(i, 1);
+			}
+		}
 	}
 
 	function onEndAnimation( $outpage, $inpage ) {
@@ -422,11 +444,47 @@ var PageTransitions = (function() {
 		$inpage.attr( 'class', $inpage.data( 'originalClassList' ) + ' pt-page-current' );
 	}
 
+	/**
+	 * @param  string   id
+	 * @param  Function callback
+	 * 
+	 * @CUSTOM
+	 */
+	function loadedPage(id, repeat, callback) {
+		if (!_loadedPageTriggers[id])
+			_loadedPageTriggers[id] = [];
+
+		_loadedPageTriggers[id].push({
+			id: id,
+			callback: callback,
+			repeat: repeat
+		});
+	}
+
+	/**
+	 * @param  string   id
+	 * @param  Function callback
+	 * 
+	 * @CUSTOM
+	 */
+	function leavedPage(id, repeat, callback) {
+		if (!_leavedPageTriggers[id])
+			_leavedPageTriggers[id] = [];
+
+		_leavedPageTriggers[id].push({
+			id: id,
+			callback: callback,
+			repeat: repeat
+		});
+	}
+
 	init();
 
 	return {
 		init : init,
-		nextPage : nextPage
+		nextPage : nextPage,
+		loadedPage: loadedPage,
+		leavedPage: leavedPage
 	};
 
-})();
+})(jQuery);

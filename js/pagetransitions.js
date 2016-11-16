@@ -33,13 +33,29 @@ var PageTransitions = (function($) {
             PAGE_UP: 33
         },
         _loadedPageTriggers = {},
-        _leavedPageTriggers = {};
+        _leavedPageTriggers = {},
+        _pages = [];
 
 	function init() {
 
 		$pages.each( function() {
 			var $page = $( this );
 			$page.data( 'originalClassList', $page.attr( 'class' ) );
+
+			$page.setTimeouts = [];
+
+			$page.setTimeout = function(callback, time) {
+				this.setTimeouts.push( setTimeout(callback, time) );
+			}
+
+			$page.clearTimeouts = function() {
+				for (var i = this.setTimeouts.length - 1; i >= 0; i--) {
+					clearTimeout(this.setTimeouts[i]);
+					this.setTimeouts.pop();
+				}
+			}
+
+			_pages[this.id] = $page;
 		} );
 
 		$pages.eq( current ).addClass( 'pt-page-current' );
@@ -411,9 +427,10 @@ var PageTransitions = (function($) {
 		}
 
 		// Custom
-		if(triggers = _leavedPageTriggers[$currPage.attr('id')]) {			
+		if(triggers = _leavedPageTriggers[$currPage.attr('id')]) {
+			var page = _pages[$currPage.attr('id')];
+
 			for (var i = triggers.length - 1; i >= 0; i--) {
-				var page = $('#' + triggers[i].id);
 				triggers[i].callback(page);
 
 				if(!triggers[i].repeat)
@@ -422,8 +439,9 @@ var PageTransitions = (function($) {
 		}
 
 		if(triggers = _loadedPageTriggers[$nextPage.attr('id')]) {			
+			var page = _pages[$nextPage.attr('id')];
+
 			for (var i = triggers.length - 1; i >= 0; i--) {
-				var page = $('#' + triggers[i].id);
 				triggers[i].callback(page);
 
 				if(!triggers[i].repeat)
@@ -455,7 +473,6 @@ var PageTransitions = (function($) {
 			_loadedPageTriggers[id] = [];
 
 		_loadedPageTriggers[id].push({
-			id: id,
 			callback: callback,
 			repeat: repeat
 		});
@@ -472,7 +489,6 @@ var PageTransitions = (function($) {
 			_leavedPageTriggers[id] = [];
 
 		_leavedPageTriggers[id].push({
-			id: id,
 			callback: callback,
 			repeat: repeat
 		});
